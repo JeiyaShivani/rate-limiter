@@ -1,0 +1,15 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 60
+      arrivalRate: 50
+      name: "Load test"
+
+scenarios:
+  - name: "Check rate limit"
+    flow:
+      - post:
+          url: "/check"
+          json:
+            userId: "loadtest-user"
+            ip: "10.0.0.1"

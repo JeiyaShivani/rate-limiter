@@ -1,5 +1,6 @@
 const express = require('express');
 const Redis = require('ioredis');
+const PORT=3000;
 
 const app = express();
 app.use(express.json());
@@ -23,3 +24,4 @@ app.get('/health', (req, res) => {
 });
 
 module.exports = { app, redis };
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
