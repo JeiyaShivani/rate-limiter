@@ -1,34 +1,43 @@
 name: Deploy Rate Limiter
-
 on:
   push:
     branches:
       - main
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
+      - name: Wait for Redis
+        run: |
+          until redis-cli ping; do
+            echo "Waiting for Redis..."
+            sleep 1
+          done
       - name: Run tests
         run: |
           npm install
           npm test
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-
       - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
       - name: Build and push Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -37,7 +46,6 @@ jobs:
           docker build -t $ECR_REGISTRY/rate-limiter:$IMAGE_TAG .
           docker push $ECR_REGISTRY/rate-limiter:$IMAGE_TAG
           echo "IMAGE=$ECR_REGISTRY/rate-limiter:$IMAGE_TAG" >> $GITHUB_ENV
-
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -51,7 +59,6 @@ jobs:
             docker stop rate-limiter-app || true
             docker rm rate-limiter-app || true
             docker run -d --name rate-limiter-app --network host 203276832460.dkr.ecr.us-east-1.amazonaws.com/rate-limiter:latest
-            
       - name: Health check
         run: |
           sleep 10
