@@ -60,7 +60,7 @@ jobs:
             docker pull $IMAGE
             docker stop rate-limiter-app || true
             docker rm rate-limiter-app || true
-            docker run -d --name rate-limiter-app --network host 203276832460.dkr.ecr.us-east-1.amazonaws.com/rate-limiter:latest
+            docker run -d --name rate-limiter-app --network host $IMAGE
       - name: Health check
         run: |
           sleep 10
