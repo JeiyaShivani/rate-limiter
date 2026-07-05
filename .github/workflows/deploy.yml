@@ -41,26 +41,26 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
       - name: Build and push Docker image
+        id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/rate-limiter:$IMAGE_TAG .
           docker push $ECR_REGISTRY/rate-limiter:$IMAGE_TAG
-          echo "IMAGE=$ECR_REGISTRY/rate-limiter:$IMAGE_TAG" >> $GITHUB_ENV
+          echo "image=$ECR_REGISTRY/rate-limiter:$IMAGE_TAG" >> $GITHUB_OUTPUT
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: IMAGE
           script: |
             aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 203276832460.dkr.ecr.us-east-1.amazonaws.com
-            docker pull $IMAGE
+            docker pull ${{ steps.build-image.outputs.image }}
             docker stop rate-limiter-app || true
             docker rm rate-limiter-app || true
-            docker run -d --name rate-limiter-app --network host $IMAGE
+            docker run -d --name rate-limiter-app --network host ${{ steps.build-image.outputs.image }}
       - name: Health check
         run: |
           sleep 10
